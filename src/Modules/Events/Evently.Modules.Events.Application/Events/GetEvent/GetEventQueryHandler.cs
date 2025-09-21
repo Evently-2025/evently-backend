@@ -3,6 +3,7 @@ using Dapper;
 using Evently.Common.Application.Data;
 using Evently.Common.Application.Messaging;
 using Evently.Common.Domain;
+using Evently.Modules.Events.Domain.Events;
 using MediatR;
 
 namespace Evently.Modules.Events.Application.Events.GetEvent;
@@ -27,6 +28,11 @@ internal sealed class GetEventQueryHandler(IDbConnectionFactory dbConnectionFact
             """;
 
         EventResponse? @event = await connection.QuerySingleOrDefaultAsync<EventResponse>(sql, request);
+
+        if (@event is null)
+        {
+            return Result.Failure<EventResponse>(EventErrors.NotFound(request.EventId));
+        }
         return @event;
     }
 }
