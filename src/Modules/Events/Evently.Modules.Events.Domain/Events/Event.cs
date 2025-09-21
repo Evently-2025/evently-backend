@@ -14,13 +14,18 @@ public sealed class Event: Entity
     public DateTime? EndAtUtc { get; private set; }
     public EventStatus Status { get; private set; }
 
-    public static Event Create(
+    public static Result<Event> Create(
         string Title,
         string Description,
         string Location,
         DateTime StartAtUtc,
         DateTime? EndAtUtc)
     {
+        if (EndAtUtc.HasValue && EndAtUtc < StartAtUtc)
+        {
+            return Result.Failure<Event>(EventErrors.EndDatePrecedesStartDate);
+        }
+
         var @event = new Event
         {
             Id = Guid.NewGuid(),
@@ -28,10 +33,12 @@ public sealed class Event: Entity
             Description = Description,
             Location = Location,
             StartAtUtc = StartAtUtc,
-            EndAtUtc = EndAtUtc
+            EndAtUtc = EndAtUtc,
+            Status = EventStatus.Draft
         };
 
         @event.Raise(new EventCreatedDomainEvent(@event.Id));
+
         return @event;
     }
 }
