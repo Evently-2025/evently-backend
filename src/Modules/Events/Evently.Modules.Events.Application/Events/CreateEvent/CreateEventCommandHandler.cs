@@ -1,23 +1,40 @@
-﻿using Evently.Modules.Events.Application.Abstractions.Data;
+﻿using Evently.Modules.Events.Application.Abstractions.Clock;
+using Evently.Modules.Events.Application.Abstractions.Data;
+using Evently.Modules.Events.Application.Abstractions.Messaging;
+using Evently.Modules.Events.Domain.Abstractions;
 using Evently.Modules.Events.Domain.Events;
-using MediatR;
 
 namespace Evently.Modules.Events.Application.Events.CreateEvent;
 
-internal sealed class CreateEventCommandHandler(IEventRepository eventRepository, IUnitOfWork unitOfWork) : IRequestHandler<CreateEventCommand, Guid>
+internal sealed class CreateEventCommandHandler(
+    IDateTimeProvider dateTimeProvider,
+    IEventRepository eventRepository,
+    IUnitOfWork unitOfWork)
+    : ICommandHandler<CreateEventCommand, Guid>
 {
-    public async Task<Guid> Handle(CreateEventCommand request, CancellationToken cancellationToken)
+    public async Task<Result<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
     {
-        var @event = Event.Create(
+        if (request.StartAtUtc < dateTimeProvider.UtcNow)
+        {
+            return Result.Failure<Guid>(EventErrors.StartDateInPast);
+        }
+
+        Result<Event> result = Event.Create(
             request.Title,
             request.Description,
             request.Location,
             request.StartAtUtc,
             request.EndAtUtc);
 
-        eventRepository.Insert(@event);
+        if (result.IsFailure)
+        {
+            return Result.Failure<Guid>(result.Error);
+        }
+
+        eventRepository.Insert(result.Value);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return @event.Id;
+
+        return result.Value.Id;
     }
 }
