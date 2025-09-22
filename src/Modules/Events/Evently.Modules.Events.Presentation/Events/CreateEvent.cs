@@ -28,8 +28,6 @@ internal static class CreateEvent
 
     internal sealed class Request
     {
-        public Guid CategoryId { get; init; }
-
         public string Title { get; init; }
 
         public string Description { get; init; }
